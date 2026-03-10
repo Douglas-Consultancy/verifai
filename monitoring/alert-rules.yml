@@ -1,0 +1,42 @@
+groups:
+  - name: verifai
+    rules:
+      - alert: HighP95Latency
+        expr: histogram_quantile(0.95, rate(verifai_request_latency_seconds_bucket[2m])) > 1
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VerifAI p95 latency above 1s for 2 minutes"
+
+      - alert: JSONParseFailures
+        expr: rate(verifai_json_parse_failures_total[1m]) > 0.1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VerifAI JSON parse failure rate above 0.1/s"
+
+      - alert: HighViolationRate
+        expr: rate(verifai_violations_total[3m]) > 10
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "VerifAI violation rate above 10/s for 3 minutes"
+
+      - alert: GPUMemoryPressure
+        expr: verifai_gpu_memory_mb > 6000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "VerifAI GPU memory usage above 6 GB for 5 minutes"
+
+      - alert: ModelUnloaded
+        expr: verifai_model_loaded == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "VerifAI model is not loaded"
