@@ -1,0 +1,46 @@
+{
+  "title": "VerifAI",
+  "uid": "verifai",
+  "editable": true,
+  "time": {"from": "now-1h", "to": "now"},
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "Request Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "rate(verifai_requests_total[1m])", "legendFormat": "req/s"}]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "p50 / p95 / p99 Latency",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [
+        {"expr": "histogram_quantile(0.50, rate(verifai_request_latency_seconds_bucket[1m]))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, rate(verifai_request_latency_seconds_bucket[1m]))", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, rate(verifai_request_latency_seconds_bucket[1m]))", "legendFormat": "p99"}
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Violation Rate",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "targets": [{"expr": "rate(verifai_violations_total[1m])", "legendFormat": "violations/s"}]
+    },
+    {
+      "id": 4, "type": "stat", "title": "Model Loaded",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 8},
+      "targets": [{"expr": "verifai_model_loaded", "legendFormat": "loaded"}],
+      "fieldConfig": {"defaults": {"mappings": [{"type": "value", "options": {"0": {"text": "DOWN", "color": "red"}, "1": {"text": "UP", "color": "green"}}}]}}
+    },
+    {
+      "id": 5, "type": "gauge", "title": "GPU Memory (MB)",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 8},
+      "targets": [{"expr": "verifai_gpu_memory_mb", "legendFormat": "MB"}],
+      "fieldConfig": {"defaults": {"max": 8000, "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "yellow", "value": 4000}, {"color": "red", "value": 6000}]}}}
+    },
+    {
+      "id": 6, "type": "timeseries", "title": "JSON Parse Failures",
+      "gridPos": {"h": 4, "w": 12, "x": 12, "y": 12},
+      "targets": [{"expr": "rate(verifai_json_parse_failures_total[1m])", "legendFormat": "failures/s"}]
+    }
+  ],
+  "schemaVersion": 39
+}
