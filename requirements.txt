@@ -25,3 +25,7 @@ scikit-learn==1.6.0
 
 # HTTP client used by the orchestrator to call the verifier
 requests==2.32.3
+
+# Testing
+pytest==8.3.4
+httpx==0.28.1
