@@ -1,16 +1,26 @@
+# Python byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
+*$py.class
+
+# Distribution / packaging
+.eggs/
 dist/
 build/
-.eggs/
+*.egg-info/
+
+# Virtual environments
 .venv/
 venv/
-.env
-*.log
+env/
+
+# Pytest cache
 .pytest_cache/
-.mypy_cache/
+
+# Model output directories
 my-verifier/
+*.bin
+*.safetensors
+
+# Trace output
+trace.jsonl
