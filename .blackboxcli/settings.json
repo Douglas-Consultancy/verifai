@@ -1,0 +1,23 @@
+{
+  "contextFileName": "BLACKBOX.md",
+  "preferredEditor": "vscode",
+  "autoAccept": true,
+  "checkpointing": {
+    "enabled": true
+  },
+  "chatCompression": {
+    "contextPercentageThreshold": 0.6
+  },
+  "fileFiltering": {
+    "respectGitIgnore": true,
+    "enableRecursiveFileSearch": true
+  },
+  "approvalMode": "auto-edit",
+  "showLineNumbers": true,
+  "enableWelcomeBack": true,
+  "summarizeToolOutput": {
+    "run_shell_command": {
+      "tokenBudget": 2000
+    }
+  }
+}
