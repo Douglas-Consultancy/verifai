@@ -19,7 +19,7 @@ from prometheus_client import (
     generate_latest,
     CONTENT_TYPE_LATEST,
 )
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from starlette.responses import Response
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -43,6 +43,12 @@ VIOLATION_COUNT = Counter("verifai_violations_total", "Total violations detected
 JSON_PARSE_FAILURES = Counter("verifai_json_parse_failures_total", "JSON parse failures")
 MODEL_LOADED = Gauge("verifai_model_loaded", "Whether the model is loaded (1=yes, 0=no)")
 GPU_MEMORY_MB = Gauge("verifai_gpu_memory_mb", "GPU memory used in MB")
+BATCH_REQUEST_COUNT = Counter("verify_batch_requests_total", "Total /verify/batch requests")
+BATCH_SIZE = Histogram(
+    "verify_batch_size",
+    "Number of items per /verify/batch request",
+    buckets=(1, 2, 5, 10, 20, 30, 40, 50),
+)
 
 # ---------------------------------------------------------------------------
 # Global state
@@ -106,6 +112,33 @@ class VerifyResponse(BaseModel):
     latency_ms: float
 
 
+class BatchItem(BaseModel):
+    principles: list[str]
+    response: str
+
+
+class BatchResult(BaseModel):
+    violations: list[str]
+    confidence: float
+
+
+class BatchRequest(BaseModel):
+    items: list[BatchItem]
+
+    @field_validator("items")
+    @classmethod
+    def validate_items(cls, v: list) -> list:
+        if len(v) == 0:
+            raise ValueError("items must not be empty")
+        if len(v) > 50:
+            raise ValueError("items must not exceed 50")
+        return v
+
+
+class BatchResponse(BaseModel):
+    results: list[BatchResult]
+
+
 # ---------------------------------------------------------------------------
 # Endpoints
 # ---------------------------------------------------------------------------
@@ -164,6 +197,65 @@ async def verify(req: VerifyRequest):
         verdict=Verdict(violations=all_violations, confidence=avg_confidence),
         latency_ms=elapsed_ms,
     )
+
+
+def _run_inference(principles: list[str], response: str) -> BatchResult:
+    """Run model inference for a single (principles, response) pair and return a BatchResult."""
+    all_violations: list[str] = []
+    total_confidence = 0.0
+
+    for principle in principles:
+        if MODEL_TYPE == "classifier":
+            result = classifier_pipe(f"{principle} ||| {response}")[0]
+            is_violation = result["label"].lower() in ("fail", "violation", "1")
+            conf = result["score"]
+        else:
+            prompt = (
+                f"<|user|>\n"
+                f"Verify the following response against the principle: \"{principle}\"\n\n"
+                f"Response: \"{response}\"\n"
+                f"<|assistant|>\n"
+            )
+            inputs = tokenizer(
+                prompt, return_tensors="pt", truncation=True, max_length=512
+            ).to(next(model.parameters()).device)
+
+            with torch.no_grad():
+                output_ids = model.generate(
+                    **inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False
+                )
+            generated = tokenizer.decode(
+                output_ids[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True
+            )
+
+            try:
+                verdict = json.loads(generated)
+                is_violation = bool(verdict.get("violations"))
+                conf = float(verdict.get("confidence", 0.5))
+            except (json.JSONDecodeError, ValueError):
+                JSON_PARSE_FAILURES.inc()
+                is_violation = True
+                conf = 0.5
+
+        if is_violation:
+            all_violations.append(principle)
+            VIOLATION_COUNT.inc()
+        total_confidence += conf
+
+    avg_confidence = round(total_confidence / max(len(principles), 1), 2)
+    return BatchResult(violations=all_violations, confidence=avg_confidence)
+
+
+@app.post("/verify/batch", response_model=BatchResponse)
+async def verify_batch(req: BatchRequest):
+    BATCH_REQUEST_COUNT.inc()
+    BATCH_SIZE.observe(len(req.items))
+
+    results = [
+        _run_inference(item.principles, item.response) for item in req.items
+    ]
+    update_gpu_metrics()
+    return BatchResponse(results=results)
 
 
 @app.get("/metrics")

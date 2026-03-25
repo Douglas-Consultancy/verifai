@@ -89,6 +89,41 @@ chmod +x run_verifai.sh
 ./run_verifai.sh
 ```
 
+## Docker
+
+The verifier can be run as a container using the provided `Dockerfile`.
+
+### Build the image
+
+```bash
+docker build -t verifai .
+```
+
+### Run the container
+
+```bash
+docker run -p 8000:8000 \
+  -e VERIFIER_MODEL_PATH=/models/verifier \
+  -v /path/to/my-verifier:/models/verifier:ro \
+  verifai
+```
+
+### Full stack with Prometheus and Grafana
+
+Set `MODEL_PATH` to the local path of your trained verifier directory, then start everything with Docker Compose:
+
+```bash
+cd monitoring
+MODEL_PATH=../my-verifier docker-compose -f docker-compose-grafana.yml up -d
+```
+
+This brings up:
+- **VerifAI** at `http://localhost:8000`
+- **Prometheus** at `http://localhost:9090`
+- **Grafana** at `http://localhost:3000` (admin/admin)
+
+The model directory is bind-mounted read-only into the container at `/models/verifier`. Override the model type with `VERIFIER_MODEL_TYPE=classifier` if needed.
+
 ## Monitoring
 
 The service exposes `/metrics` in Prometheus format. A pre-built Grafana dashboard

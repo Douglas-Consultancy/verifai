@@ -1,6 +1,21 @@
 version: "3.8"
 
 services:
+  verifier:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - VERIFIER_MODEL_PATH=/models/verifier
+      - VERIFIER_MODEL_TYPE=${VERIFIER_MODEL_TYPE:-causal}
+    volumes:
+      - ${MODEL_PATH:-../my-verifier}:/models/verifier:ro
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:v2.51.0
     volumes:

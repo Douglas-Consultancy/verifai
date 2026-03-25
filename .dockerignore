@@ -1,0 +1,15 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+tests/
+monitoring/
+.git
+.github
+*.md
+assets/
+run_verifai.sh
+train_verifier.py
+orchestrate_until_pass.py
+principles.txt
+my-verifier/
